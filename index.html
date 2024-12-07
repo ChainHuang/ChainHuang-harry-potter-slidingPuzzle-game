@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harry Potter Sliding Puzzle</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>Harry Potter's Escape</h1>
+        
+        <div class="game-info">
+            <div>Level: <span id="current-level">1</span></div>
+            <div>Steps: <span id="step-count">0</span></div>
+            <div>Best: <span id="best-score">-</span></div>
+        </div>
+
+        <div id="message"></div>
+        
+        <div class="grid" id="puzzle-grid">
+            <!-- Grid will be populated by JavaScript -->
+        </div>
+
+        <div class="controls">
+            <button id="restart-btn">Restart Level</button>
+            <button id="prev-level" disabled>Previous Level</button>
+            <button id="next-level" disabled>Next Level</button>
+        </div>
+
+        <div class="instructions">
+            <h2>How to Play</h2>
+            <p>Help Harry escape from Hogwarts by sliding the blocks!</p>
+            <p>• Click or tap a character to select it</p>
+            <p>• Use arrow keys or drag to move</p>
+            <p>• Guide Harry (2x2) to the golden exit</p>
+            <p>• Avoid blocking his path with other characters</p>
+            <p>• Complete each level in as few moves as possible</p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
