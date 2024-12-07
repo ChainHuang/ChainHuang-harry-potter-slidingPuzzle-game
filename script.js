@@ -6,14 +6,14 @@ let currentLevel = 1;
 // Character configurations
 const characters = {
     // 2x2 blocks
-    largeCharacters: ['harry', 'voldemort'],
+    largeCharacters: ['harry', ],
     // 1x2 blocks (vertical)
     specialCharacters: ['thestral', 'dementor'],
     // 1x1 blocks
     supportingCharacters: [
         'hermione', 'ron', 'neville',
         'ginny', 'bellatrix', 'lucius',
-        'draco', 'snape'
+        'draco', 'snape','voldemort'
     ]
 };
 
@@ -353,10 +353,115 @@ function saveBestScore() {
 
 // Setup event listeners
 function setupEventListeners() {
+    // Game control buttons
     document.getElementById('restart-btn').addEventListener('click', () => loadLevel(currentLevel));
     document.getElementById('prev-level').addEventListener('click', () => loadLevel(currentLevel - 1));
     document.getElementById('next-level').addEventListener('click', () => loadLevel(currentLevel + 1));
-    document.addEventListener('keydown', handleKeyPress);
+    
+    // Add keyboard event listener
+    document.addEventListener('keydown', handleKeyPress, { passive: false });
+    
+    // Prevent scrolling when using arrow keys
+    window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
+             'Up', 'Down', 'Left', 'Right', ' ', 'Spacebar'].includes(e.key)) {
+            if (selectedPiece || e.target.closest('.block')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    }, { passive: false });
+    
+    // Clear selection when clicking outside pieces
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.block')) {
+            document.querySelectorAll('.block').forEach(block => block.classList.remove('selected'));
+            selectedPiece = null;
+        }
+    });
+}
+
+// Handle keyboard input
+function handleKeyPress(e) {
+    if (!selectedPiece) return;
+    
+    const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                      'Up', 'Down', 'Left', 'Right'];
+                      
+    if (arrowKeys.includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        let direction;
+        switch(e.key) {
+            case 'ArrowUp':
+            case 'Up':
+                direction = 'up';
+                break;
+            case 'ArrowDown':
+            case 'Down':
+                direction = 'down';
+                break;
+            case 'ArrowLeft':
+            case 'Left':
+                direction = 'left';
+                break;
+            case 'ArrowRight':
+            case 'Right':
+                direction = 'right';
+                break;
+            default:
+                return;
+        }
+        
+        if (tryMove(direction)) {
+            // Add visual feedback for successful move
+            selectedPiece.classList.add('moving');
+            setTimeout(() => {
+                selectedPiece.classList.remove('moving');
+            }, 150);
+        }
+    }
+}
+
+// Create a game piece
+function createPiece({ id, x, y }) {
+    const char = CHARACTERS[id];
+    const element = document.createElement('div');
+    
+    element.className = `block ${char.type}`;
+    element.dataset.id = id;
+    element.style.gridColumn = `${x + 1} / span ${char.size === '2x2' || char.size === '2x1' ? 2 : 1}`;
+    element.style.gridRow = `${y + 1} / span ${char.size === '2x2' || char.size === '1x2' ? 2 : 1}`;
+    
+    const img = document.createElement('img');
+    img.src = char.image;
+    img.alt = id.toLowerCase();
+    element.appendChild(img);
+    
+    // Add click handler for selection
+    element.addEventListener('click', selectPiece);
+    
+    // Add drag handlers
+    element.addEventListener('mousedown', startDrag);
+    element.addEventListener('touchstart', startDrag, { passive: false });
+    
+    return element;
+}
+
+// Handle piece click
+function selectPiece(e) {
+    e.preventDefault();
+    const piece = e.currentTarget;
+    
+    // Remove selection from all other pieces
+    document.querySelectorAll('.block').forEach(block => {
+        block.classList.remove('selected');
+    });
+    
+    // Select this piece
+    piece.classList.add('selected');
+    selectedPiece = piece;
 }
 
 // Load level
@@ -386,58 +491,39 @@ function loadLevel(level) {
     updateUI();
 }
 
-// Create a game piece
-function createPiece({ id, x, y }) {
-    const char = CHARACTERS[id];
-    const element = document.createElement('div');
-    
-    element.className = `block ${char.type}`;
-    element.dataset.id = id;
-    element.style.gridColumn = `${x + 1} / span ${char.size === '2x2' || char.size === '2x1' ? 2 : 1}`;
-    element.style.gridRow = `${y + 1} / span ${char.size === '2x2' || char.size === '1x2' ? 2 : 1}`;
-    
-    const img = document.createElement('img');
-    img.src = char.image;
-    img.alt = id.toLowerCase();
-    element.appendChild(img);
-    
-    // Add click handler for selection
-    element.addEventListener('click', (e) => {
-        // Remove highlight from previously selected piece
-        const previouslySelected = document.querySelector('.block.selected');
-        if (previouslySelected && previouslySelected !== element) {
-            previouslySelected.classList.remove('selected');
-        }
-        
-        // Toggle selection on current piece
-        element.classList.toggle('selected');
-        selectedPiece = element.classList.contains('selected') ? element : null;
-    });
-    
-    element.addEventListener('mousedown', startDrag);
-    element.addEventListener('touchstart', startDrag, { passive: false });
-    
-    return element;
-}
-
 // Start dragging
 function startDrag(e) {
     e.preventDefault();
+    
+    // Only handle left mouse button
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    
     const piece = e.target.closest('.block');
     if (!piece) return;
+    
+    // Remove selection from other pieces
+    document.querySelectorAll('.block').forEach(block => {
+        if (block !== piece) block.classList.remove('selected');
+    });
     
     selectedPiece = piece;
     isDragging = true;
     piece.classList.add('selected');
     
+    // Store initial touch/mouse position
     if (e.type === 'mousedown') {
         startX = e.clientX;
         startY = e.clientY;
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', stopDrag);
     } else {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
+    }
+    
+    // Add event listeners for drag and release
+    if (e.type === 'mousedown') {
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+    } else {
         document.addEventListener('touchmove', drag, { passive: false });
         document.addEventListener('touchend', stopDrag);
     }
@@ -445,7 +531,7 @@ function startDrag(e) {
 
 // Handle dragging
 function drag(e) {
-    if (!isDragging) return;
+    if (!isDragging || !selectedPiece) return;
     e.preventDefault();
     
     const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
@@ -453,21 +539,31 @@ function drag(e) {
     
     const deltaX = currentX - startX;
     const deltaY = currentY - startY;
+    const threshold = 30; // Minimum pixels to trigger a move
     
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        tryMove(deltaX > 0 ? 'right' : 'left');
-    } else if (Math.abs(deltaY) > 30) {
-        tryMove(deltaY > 0 ? 'down' : 'up');
+    // Only move if we exceed the threshold
+    if (Math.abs(deltaX) > threshold || Math.abs(deltaY) > threshold) {
+        let direction = '';
+        
+        // Determine primary direction of movement
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            direction = deltaX > 0 ? 'right' : 'left';
+        } else {
+            direction = deltaY > 0 ? 'down' : 'up';
+        }
+        
+        // Try to move and reset start position if successful
+        if (tryMove(direction)) {
+            startX = currentX;
+            startY = currentY;
+        }
     }
-    
-    startX = currentX;
-    startY = currentY;
 }
 
 // Stop dragging
 function stopDrag() {
     if (selectedPiece) {
-        selectedPiece.classList.remove('selected');
+        selectedPiece.classList.remove('dragging');
     }
     isDragging = false;
     document.removeEventListener('mousemove', drag);
@@ -476,72 +572,54 @@ function stopDrag() {
     document.removeEventListener('touchend', stopDrag);
 }
 
-// Handle keyboard input
-function handleKeyPress(e) {
-    if (!selectedPiece) return;
-    
-    // Prevent default scrolling behavior when moving pieces
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-    }
-    
-    switch(e.key) {
-        case 'ArrowUp':
-            tryMove('up');
-            break;
-        case 'ArrowDown':
-            tryMove('down');
-            break;
-        case 'ArrowLeft':
-            tryMove('left');
-            break;
-        case 'ArrowRight':
-            tryMove('right');
-            break;
-    }
-}
-
 // Try to move a piece
 function tryMove(direction) {
-    if (!selectedPiece) return;
+    if (!selectedPiece) return false;
     
     const currentCol = parseInt(selectedPiece.style.gridColumn);
     const currentRow = parseInt(selectedPiece.style.gridRow);
     
-    // Get piece dimensions
     const isMain = selectedPiece.classList.contains('main');
     const isHorizontal = selectedPiece.classList.contains('horizontal');
     const isVertical = selectedPiece.classList.contains('vertical');
     
-    // Calculate spans
     const colSpan = isMain || isHorizontal ? 2 : 1;
     const rowSpan = isMain || isVertical ? 2 : 1;
     
     let newCol = currentCol;
     let newRow = currentRow;
     
+    // Calculate new position based on direction
     switch(direction) {
         case 'up':
-            if (currentRow > 1) newRow--;
+            if (currentRow <= 1) return false;
+            newRow--;
             break;
         case 'down':
-            if (currentRow + rowSpan - 1 < 5) newRow++;
+            if (currentRow + rowSpan > 5) return false;
+            newRow++;
             break;
         case 'left':
-            if (currentCol > 1) newCol--;
+            if (currentCol <= 1) return false;
+            newCol--;
             break;
         case 'right':
-            if (currentCol + colSpan - 1 < 4) newCol++;
+            if (currentCol + colSpan > 4) return false;
+            newCol++;
             break;
     }
     
+    // Check if move is valid
     if (canMove(selectedPiece, newCol, newRow)) {
         selectedPiece.style.gridColumn = `${newCol} / span ${colSpan}`;
         selectedPiece.style.gridRow = `${newRow} / span ${rowSpan}`;
         steps++;
         updateUI();
         checkWin();
+        return true;
     }
+    
+    return false;
 }
 
 // Check if a move is valid
@@ -596,10 +674,7 @@ function canMove(piece, newCol, newRow) {
 // Check for win condition
 function checkWin() {
     const harry = document.querySelector('.block.main');
-    const harryRow = parseInt(harry.style.gridRow);
-    const harryCol = parseInt(harry.style.gridColumn);
-    
-    if (harryRow === 4 && harryCol === 1) {
+    if (harry && harry.style.gridRow === '4' && harry.style.gridColumn === '1 / span 2') {
         saveBestScore();
         showMessage('Level Complete!', 'achievement');
         document.getElementById('next-level').disabled = currentLevel >= Object.keys(LEVELS).length;

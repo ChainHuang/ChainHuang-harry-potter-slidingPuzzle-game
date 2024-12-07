@@ -55,7 +55,8 @@ body {
     border: 2px solid #ffd700;
     border-radius: 4px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.15s ease-out;
+    user-select: none;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -87,12 +88,15 @@ body {
 
 /* 选中状态 */
 .block.selected {
-    transform: scale(1.02);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.6),
-                inset 0 0 5px rgba(255, 215, 0, 0.3);
+    z-index: 10;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px #ffd700, 0 0 15px rgba(255, 215, 0, 0.6);
     border-color: #ffd700;
-    z-index: 3;
     animation: pulse 2s infinite;
+}
+
+.block.moving {
+    transform: scale(1.1);
 }
 
 @keyframes pulse {
